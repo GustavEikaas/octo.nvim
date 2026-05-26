@@ -933,6 +933,24 @@ query($owner: String!, $name: String!, $number: Int!) {
 }
 ]]
 
+  M.suggested_reviewers = [[
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      suggestedReviewers(first: 20) {
+        nodes {
+          reviewer {
+            id
+            login
+            name
+          }
+        }
+      }
+    }
+  }
+}
+]]
+
   M.issue_assignees = [[
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {

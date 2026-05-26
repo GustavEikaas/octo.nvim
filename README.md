@@ -225,7 +225,7 @@ require"octo".setup {
   ssh_aliases = {}, -- SSH aliases. e.g. `ssh_aliases = {["github.com-work"] = "github.com"}`. The key part will be interpreted as an anchored Lua pattern.
   reaction_viewer_hint_icon = " ", -- marker for user reactions
   commands = {}, -- additional subcommands made available to `Octo` command
-  users = "search", -- Users for assignees or reviewers. Values: "search" | "mentionable" | "assignable"
+  users = "search", -- Users for assignees. Values: "search" | "mentionable" | "assignable"
   user_icon = " ", -- user icon
   ghost_icon = "󰊠 ", -- ghost icon
   copilot_icon = " ", -- copilot icon
@@ -755,7 +755,7 @@ If no command is passed, the argument to `Octo` is treated as a URL from where a
 - `<CR>`: Append Gist to buffer
   [Available keys](https://cli.github.com/manual/gh_gist_list): `repo`\|`public`\|`secret`
 
-5. Users in the assignee and reviewer commands:
+5. Users in the assignee command:
 
 - `search`: Dynamically search all GitHub users
 - `mentionable`: List of *mentionable* users in current repo
@@ -764,6 +764,8 @@ If no command is passed, the argument to `Octo` is treated as a URL from where a
   Here, `search` is the default value and most broad. Both `assignable` and
   `mentionable` are specific to the current repo. The `assignable` option is more
   restrictive than `mentionable`.
+
+  The reviewer picker is always scoped to the current pull request and repository.
 
 ## 📋 PR reviews
 

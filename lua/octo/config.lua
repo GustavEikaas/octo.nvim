@@ -205,7 +205,7 @@ function M.get_default_values()
     ssh_aliases = {}, -- SSH aliases. e.g. `ssh_aliases = {["github.com-work"] = "github.com"}`. The key part will be interpreted as an anchored Lua pattern.
     reaction_viewer_hint_icon = " ", -- marker for user reactions
     commands = {}, -- additional subcommands made available to `Octo` command
-    users = "search", -- Users for assignees or reviewers. Values: "search" | "mentionable" | "assignable"
+    users = "search", -- Users for assignees. Values: "search" | "mentionable" | "assignable"
     user_icon = " ", -- user icon
     ghost_icon = "󰊠 ", -- ghost icon
     copilot_icon = " ", -- copilot icon

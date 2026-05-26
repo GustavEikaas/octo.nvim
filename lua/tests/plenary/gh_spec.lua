@@ -275,6 +275,26 @@ describe("REST API args", function()
       "--paginate",
     })
   end)
+  it("Returns table with array fields", function()
+    local actual = gh.create_rest_args("POST", {
+      "repos/{owner}/{name}/pulls/{number}/requested_reviewers",
+      format = { owner = "pwntester", name = "octo.nvim", number = 1 },
+      F = {
+        reviewers = { "alice" },
+        team_reviewers = { "core-team" },
+      },
+    })
+    assert_tables_have_same_elements(actual, {
+      "api",
+      "--method",
+      "POST",
+      "repos/pwntester/octo.nvim/pulls/1/requested_reviewers",
+      "-F",
+      "reviewers[]=alice",
+      "-F",
+      "team_reviewers[]=core-team",
+    })
+  end)
 end)
 
 describe("create_graphql_opts:", function()

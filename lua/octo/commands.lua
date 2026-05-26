@@ -2716,42 +2716,95 @@ function M.add_user(subject, logins)
   local iid = buffer.node.id
   if not iid then
     utils.error "Cannot get issue/pr id"
+    return
+  end
+
+  local function refresh()
+    local hostname = get_hostname_from_buffer()
+    require("octo").load(buffer.repo, buffer.kind, buffer.number, hostname, function(obj)
+      writers.write_details(buffer.bufnr, obj, true)
+      vim.cmd [[stopinsert]]
+    end)
   end
 
   ---@param user_ids string[]
-  local function cb(user_ids)
-    local query ---@type string
-    if subject == "assignee" then
-      query = mutations.add_assignees
-    elseif subject == "reviewer" then
-      query = mutations.request_reviews
-    else
-      utils.error "Invalid user type"
-      return
-    end
+  local function add_assignees(user_ids)
     gh.api.graphql {
       paginate = true,
-      query = query,
+      query = mutations.add_assignees,
       F = {
         user_ids = user_ids,
         object_id = iid,
       },
       opts = {
         cb = gh.create_callback {
-          success = function()
-            -- refresh issue/pr details
-            local hostname = get_hostname_from_buffer()
-            require("octo").load(buffer.repo, buffer.kind, buffer.number, hostname, function(obj)
-              writers.write_details(buffer.bufnr, obj, true)
-              vim.cmd [[stopinsert]]
-            end)
-          end,
+          success = refresh,
         },
       },
     }
   end
+
+  ---@param reviewers { kind: "user"|"team", login?: string, slug?: string }[]
+  local function add_reviewers(reviewers)
+    if not buffer:isPullRequest() then
+      utils.error "Not a pull request buffer"
+      return
+    end
+
+    local user_logins = {}
+    local team_slugs = {}
+    for _, reviewer in ipairs(reviewers) do
+      if reviewer.kind == "team" then
+        if not utils.is_blank(reviewer.slug) then
+          table.insert(team_slugs, reviewer.slug)
+        end
+      elseif not utils.is_blank(reviewer.login) then
+        table.insert(user_logins, reviewer.login)
+      end
+    end
+
+    if #user_logins == 0 and #team_slugs == 0 then
+      utils.error "No reviewers selected"
+      return
+    end
+
+    local fields = {}
+    if #user_logins > 0 then
+      fields.reviewers = user_logins
+    end
+    if #team_slugs > 0 then
+      fields.team_reviewers = team_slugs
+    end
+
+    gh.api.post {
+      "/repos/{owner}/{name}/pulls/{number}/requested_reviewers",
+      format = { owner = buffer.owner, name = buffer.name, number = buffer.number },
+      F = fields,
+      opts = {
+        headers = { headers.json },
+        cb = gh.create_callback {
+          success = refresh,
+        },
+      },
+    }
+  end
+
   if logins and #logins > 0 then
-    local user_ids = {} ---@type string[]
+    if subject == "reviewer" then
+      local reviewers = {}
+      for _, login in ipairs(logins) do
+        reviewers[#reviewers + 1] = { kind = "user", login = login }
+      end
+      add_reviewers(reviewers)
+      return
+    end
+
+    if subject ~= "assignee" then
+      utils.error "Invalid user type"
+      return
+    end
+
+    local user_ids = {}
     for _, user in ipairs(logins) do
       local user_id = utils.get_user_id(user)
       if user_id then
@@ -2761,11 +2814,20 @@ function M.add_user(subject, logins)
         return
       end
     end
-    cb(user_ids)
+    add_assignees(user_ids)
   else
-    picker.users(function(user_id)
-      cb { user_id }
-    end)
+    if subject == "assignee" then
+      picker.users(function(user_id)
+        add_assignees { user_id }
+      end)
+    elseif subject == "reviewer" then
+      picker.reviewers(function(reviewer)
+        add_reviewers { reviewer }
+      end)
+    else
+      utils.error "Invalid user type"
+      return
+    end
   end
 end
 

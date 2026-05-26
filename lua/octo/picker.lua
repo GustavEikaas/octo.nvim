@@ -22,6 +22,7 @@ local utils = require "octo.utils"
 ---@field releases fun(opts? : { repo?: string, cb?: function }) Get releases for a repository
 ---@field repos function Get repositories
 ---@field review_commits function Get review commits
+---@field reviewers function Get pull request reviewers
 ---@field search function Get search results
 ---@field users function Get users
 ---@field workflow_runs function Get workflow runs

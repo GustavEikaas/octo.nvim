@@ -6,6 +6,7 @@ local queries = require "octo.gh.queries"
 local utils = require "octo.utils"
 local octo_config = require "octo.config"
 local navigation = require "octo.navigation"
+local reviewers = require "octo.reviewers"
 local Async = require "snacks.picker.util.async"
 local Snacks = require "snacks"
 local notify = require "snacks.notify"
@@ -1571,6 +1572,64 @@ function M.users(cb)
   }
 end
 
+function M.reviewers(cb)
+  local reviewer_list = reviewers.get_candidates()
+  if #reviewer_list == 0 then
+    utils.error "No reviewers found"
+    return
+  end
+
+  Snacks.picker.pick {
+    title = "Reviewers",
+    items = reviewer_list,
+    format = function(item, _)
+      local ret = {} ---@type snacks.picker.Highlight[]
+
+      ret[#ret + 1] = { reviewers.format_candidate(item), "Normal" }
+
+      return ret
+    end,
+    preview = function(ctx)
+      local item = ctx.item
+      if not item then
+        return
+      end
+
+      ctx.preview:reset()
+      local lines = {}
+      if item.kind == "team" then
+        lines = {
+          "Team: " .. (item.name or item.slug),
+          "Slug: " .. item.slug,
+        }
+      else
+        lines = {
+          "User: " .. item.login,
+          "ID: " .. (item.id or ""),
+        }
+        if not utils.is_blank(item.name) then
+          table.insert(lines, "Name: " .. item.name)
+        end
+      end
+      if item.suggested then
+        table.insert(lines, "")
+        table.insert(lines, "Suggested reviewer")
+      end
+      ctx.preview:set_lines(lines)
+    end,
+    actions = {
+      confirm = function(picker, item)
+        picker:close()
+        cb(item)
+      end,
+    },
+    confirm = function(picker, item)
+      picker:close()
+      cb(item)
+    end,
+  }
+end
+
 function M.labels(opts)
   opts = opts or {}
   local cb = opts.cb
@@ -1771,6 +1830,7 @@ M.picker = {
   notifications = M.notifications,
   prs = M.pull_requests,
   review_commits = M.review_commits,
+  reviewers = M.reviewers,
   search = M.search,
   users = M.users,
 }

@@ -8,6 +8,7 @@ local navigation = require "octo.navigation"
 local previewers = require "octo.pickers.telescope.previewers"
 local entry_maker = require "octo.pickers.telescope.entry_maker"
 local reviews = require "octo.reviews"
+local reviewers = require "octo.reviewers"
 local utils = require "octo.utils"
 local octo_config = require "octo.config"
 local notifications = require "octo.notifications"
@@ -1162,6 +1163,56 @@ function M.select_user(cb)
     :find()
 end
 
+local function gen_from_reviewer(reviewer)
+  if not reviewer or vim.tbl_isempty(reviewer) then
+    return nil
+  end
+
+  local label = reviewers.format_candidate(reviewer)
+  return {
+    value = reviewer.kind == "team" and reviewer.slug or reviewer.login,
+    ordinal = label,
+    display = function(entry)
+      return entry.ordinal
+    end,
+    reviewer = reviewer,
+  }
+end
+
+function M.select_reviewer(cb)
+  local opts = vim.deepcopy(dropdown_opts)
+  opts.layout_config = {
+    width = 0.4,
+    height = 15,
+  }
+
+  local reviewer_list = reviewers.get_candidates()
+  if #reviewer_list == 0 then
+    utils.error "No reviewers found"
+    return
+  end
+
+  pickers
+    .new(opts, {
+      finder = finders.new_table {
+        results = reviewer_list,
+        entry_maker = gen_from_reviewer,
+      },
+      sorter = conf.generic_sorter(opts),
+      attach_mappings = function()
+        actions.select_default:replace(function(prompt_bufnr)
+          local selected_reviewer = action_state.get_selected_entry(prompt_bufnr)
+          actions.close(prompt_bufnr)
+          if selected_reviewer and selected_reviewer.reviewer then
+            cb(selected_reviewer.reviewer)
+          end
+        end)
+        return true
+      end,
+    })
+    :find()
+end
+
 --
 -- ASSIGNEES
 --
@@ -1832,6 +1883,7 @@ M.picker = {
   releases = M.releases,
   repos = M.repos,
   review_commits = M.review_commits,
+  reviewers = M.select_reviewer,
   search = M.search,
   users = M.select_user,
   workflow_runs = M.workflow_runs,

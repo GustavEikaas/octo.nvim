@@ -5,6 +5,7 @@ local utils = require "octo.utils"
 local gh = require "octo.gh"
 local queries = require "octo.gh.queries"
 local octo_config = require "octo.config"
+local reviewers = require "octo.reviewers"
 
 local M = {}
 
@@ -872,6 +873,45 @@ function M.users(cb)
   end
 end
 
+---@param cb function
+function M.reviewers(cb)
+  local reviewer_list = reviewers.get_candidates()
+
+  if #reviewer_list == 0 then
+    notify.error "No reviewers found"
+    return
+  end
+
+  vim.ui.select(reviewer_list, {
+    prompt = "Select Reviewer:",
+    format_item = function(reviewer)
+      return reviewers.format_candidate(reviewer)
+    end,
+    preview_item = function(reviewer)
+      local lines = {}
+      if reviewer.kind == "team" then
+        table.insert(lines, "Team: " .. (reviewer.name or reviewer.slug))
+        table.insert(lines, "Slug: " .. reviewer.slug)
+      else
+        table.insert(lines, "Login: " .. reviewer.login)
+        if not utils.is_blank(reviewer.name) then
+          table.insert(lines, "Name:  " .. reviewer.name)
+        end
+      end
+      if reviewer.suggested then
+        table.insert(lines, "")
+        table.insert(lines, "Suggested reviewer")
+      end
+      return lines
+    end,
+  }, function(choice)
+    if not choice then
+      return
+    end
+    cb(choice)
+  end)
+end
+
 ---@param opts? { login?: string }
 function M.repos(opts)
   opts = opts or {}
@@ -1428,6 +1468,7 @@ M.picker = {
   releases = M.releases,
   repos = M.repos,
   review_commits = M.review_commits,
+  reviewers = M.reviewers,
   search = M.search,
   users = M.users,
   workflow_runs = M.workflow_runs,
